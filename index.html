@@ -1,0 +1,794 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>DawaLink</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/fuse.js@6.6.2"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
+  <style>
+    :root { --primary: #14b8a6; --primary-light: #f0fdfa; }
+    body { font-family: 'Cairo', sans-serif; background-color: #f8fafc; }
+    .product-card { transition: transform 0.2s, box-shadow 0.2s; }
+    .product-card:hover { transform: translateY(-5px); box-shadow: 0 10px 20px rgba(0,0,0,0.07); }
+    .spinner { border: 4px solid rgba(0,0,0,0.1); border-left-color: var(--primary); border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .modal-content { animation: slide-up 0.28s ease-out; }
+    @keyframes slide-up { from { transform: translateY(30px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+    .telegram-btn { position: fixed; bottom: 20px; right: 20px; z-index: 1000; }
+    .telegram-btn a { display: flex; align-items: center; gap: 8px; background-color: #0088cc; color: white; padding: 12px 16px; border-radius: 50px; text-decoration: none; font-weight: 600; box-shadow: 0 4px 12px rgba(0, 136, 204, 0.3); transition: all 0.3s ease; }
+    .telegram-btn a:hover { transform: translateY(-2px); box-shadow: 0 6px 16px rgba(0, 136, 204, 0.4); }
+    #close-modal-btn { background: transparent; border: none; font-size: 1.6rem; line-height: 1; }
+    #loader-sentinel { height: 50px; width: 100%; }
+    .selected-count { position: fixed; top: 20px; left: 20px; background: var(--primary); color: white; padding: 8px 12px; border-radius: 50px; z-index: 100; }
+    .hidden { display: none; }
+    .qty-input { width: 60px; text-align: center; }
+    /* وصف المنتج */
+    .product-description div { margin-bottom: 0.25rem; padding: 0.25rem; background: #f1f5f9; border-radius: 0.25rem; border-left: 3px solid var(--primary); }
+    /* Disclaimer Modal Styles */
+    #disclaimer-modal .disclaimer-text { font-size: 0.875rem; line-height: 1.6; color: #475569; text-align: justify; }
+    #disclaimer-modal .warning { background-color: #fef3c7; border: 1px solid #f59e0b; border-radius: 0.5rem; padding: 1rem; margin-bottom: 1rem; }
+    #disclaimer-modal .warning i { color: #d97706; margin-left: 0.5rem; }
+  </style>
+</head>
+<body>
+  <div id="app" class="max-w-7xl mx-auto p-4 sm:p-6">
+    <!-- Auth Overlay -->
+    <div id="auth-overlay" class="fixed inset-0 bg-white z-50 flex items-center justify-center hidden">
+        <div class="text-center p-8 bg-white rounded-lg shadow-lg">
+            <h2 id="auth-title" class="text-xl font-bold mb-4">تسجيل الدخول أو التسجيل</h2>
+            <button id="login-btn" class="bg-teal-500 text-white px-4 py-2 rounded mr-2">دخول</button>
+            <button id="register-btn" class="bg-blue-500 text-white px-4 py-2 rounded">تسجيل جديد</button>
+        </div>
+    </div>
+    <!-- Header -->
+    <header class="flex flex-col sm:flex-row items-center justify-between gap-4 mb-8" id="header" style="display: none;">
+      <div class="flex items-center gap-3">
+        <div class="w-12 h-12 rounded-lg bg-teal-100 flex items-center justify-center text-teal-600">
+          <i class="fas fa-pills text-2xl"></i> <!-- لوجو جديد: حبوب دواء -->
+        </div>
+        <div>
+          <h1 class="text-2xl sm:text-3xl font-bold text-slate-800">دوا لينك</h1>
+          <p class="text-sm text-slate-500" id="user-greeting"></p>
+        </div>
+      </div>
+      <div class="w-full sm:w-auto flex items-center gap-4">
+        <div class="relative flex-grow">
+          <input id="search-input" type="search" placeholder="ابحث عن صنف..." class="w-full rounded-lg pl-10 pr-4 py-2.5 shadow-sm bg-white border-slate-200 focus:outline-none focus:ring-2 focus:ring-teal-200">
+          <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
+        </div>
+        <div class="relative">
+          <select id="region-filter" class="rounded-lg px-4 py-2.5 shadow-sm bg-white border-slate-200 focus:outline-none focus:ring-2 focus:ring-teal-200 appearance-none pr-8">
+            <option value="">كل المناطق</option>
+          </select>
+          <i class="fas fa-chevron-down absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
+        </div>
+        <div class="relative">
+          <select id="sort-filter" class="rounded-lg px-4 py-2.5 shadow-sm bg-white border-slate-200 focus:outline-none focus:ring-2 focus:ring-teal-200 appearance-none pr-8">
+            <option value="">ترتيب افتراضي</option>
+            <option value="discount-desc">أعلى خصم</option>
+            <option value="discount-asc">أقل خصم</option>
+            <option value="price-desc">أعلى سعر</option>
+            <option value="price-asc">أقل سعر</option>
+          </select>
+          <i class="fas fa-chevron-down absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
+        </div>
+        <button id="logout-btn" class="bg-red-500 text-white px-4 py-2 rounded">خروج</button>
+      </div>
+    </header>
+    <div id="selected-count" class="selected-count hidden">
+        <i class="fas fa-shopping-cart mr-2"></i> <span id="count-num">0</span> منتج مختار
+    </div>
+    <div id="status-area" class="mb-4"></div>
+    <div id="loading" class="text-center py-12"><div class="spinner mx-auto"></div><p class="mt-3 text-slate-500">جاري تحميل الأصناف...</p></div>
+    <main id="products-grid" class="hidden grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5"></main>
+    <div id="loader-sentinel"></div>
+    <div id="loading-more" class="text-center py-8 hidden"><div class="spinner mx-auto"></div></div>
+    <button id="confirm-order-btn" class="fixed bottom-24 right-4 bg-teal-500 text-white p-4 rounded-full shadow-lg hidden z-40" onclick="openConfirmModal()">
+        <i class="fas fa-check text-xl"></i>
+    </button>
+  </div>
+  <!-- Telegram Button -->
+  <div class="telegram-btn">
+    <a href="https://t.me/DawaLink_web?start=%D9%85%D8%B1%D8%AD%D8%A8%D8%A7%D9%8B%D8%8C%20%D8%A3%D9%88%D8%AF%20%D8%B9%D8%B1%D8%B6%20%D8%B5%D9%86%D9%81%20%D8%AF%D9%88%D8%A7%D8%A6%D9%8A%20%D8%B9%D9%84%D9%89%20%D8%A7%D9%84%D9%85%D9%88%D9%82%D8%B9%20%D8%A3%D9%88%20%D9%84%D8%AF%D9%8A%20%D8%A7%D8%B3%D8%AA%D9%81%D8%B3%D8%A7%D8%B1%20%D8%AD%D9%88%D9%84%20%D8%AF%D9%88%D8%A7%20%D9%84%D9%8A%D9%86%D9%83" target="_blank">
+      <i class="fab fa-telegram"></i>
+      عرض دواء أو استفسارات
+    </a>
+  </div>
+  <!-- Disclaimer Modal -->
+  <div id="disclaimer-modal" class="fixed inset-0 z-40 hidden flex items-center justify-center bg-black bg-opacity-50 p-4">
+    <div class="modal-content bg-white rounded-2xl shadow-xl w-full max-w-2xl max-h-[80vh] overflow-y-auto flex flex-col">
+      <div class="p-5 border-b flex justify-between items-start">
+        <h2 class="text-xl font-bold text-slate-800">شروط الاستخدام</h2>
+        <button id="close-disclaimer-btn" class="text-slate-400 hover:text-slate-600">&times;</button>
+      </div>
+      <div class="p-6 flex-grow overflow-y-auto">
+        <div class="warning">
+          <i class="fas fa-exclamation-triangle"></i>
+          <strong>تحذير هام:</strong> هذا الموقع مخصص فقط للصيدليات المسجلة لدى الهيئة العامة للدواء. أي استخدام غير مصرح به قد يعرضك للمساءلة القانونية.
+        </div>
+        <div class="disclaimer-text">
+          <p>مرحبًا بكم في <strong>دوا لينك</strong>، المنصة التي تهدف إلى تسهيل التواصل بين الصيدليات المصرية بشأن الأدوية الراكدة بكفاءة وأمان. نحن هنا لنساعد في تبادل المعلومات والتنسيق بين الصيدليات، بما يساهم في تقليل الفاقد وتعزيز الاستدامة في سلسلة التوريد الدوائية. من خلال عرض البيانات المقدمة من الصيدليات، نتيح لكم الوصول السريع إلى الأصناف المتاحة، مع الالتزام بأعلى معايير الخصوصية والأمان.</p>
+          <p><strong>إخلاء المسؤولية:</strong> يُرجى العلم أن <strong>دوا لينك</strong> لا تقوم ببيع أو شراء أي أدوية أو منتجات دوائية، ولا تتدخل في أي معاملات مالية أو تحويلات أموال بين الصيدليات. يقتصر دورنا فقط على توفير وسيلة اتصال بين الصيدليات المشاركة، دون أي تدخل في محتوى العروض أو الاتفاقيات. تقع المسؤولية الكاملة عن صحة الأدوية وسلامتها وتاريخ صلاحيتها والامتثال للقوانين واللوائح المصرية على عاتق الصيدليات المشاركة وحدها. المنصة غير مسؤولة عن أي اتفاقيات تجارية أو صفقات أو التزامات مالية أو قانونية تتم بين الأطراف، ويُنصح بشدة بالتحقق من صحة الأدوية قبل أي تعامل.</p>
+          <p><strong>تحذيرات إضافية:</strong></p>
+          <ul class="list-disc list-inside space-y-1 mt-2">
+            <li>جميع الأصناف المعروضة من مسؤولية الصيدليات المشاركة، ويشترط أن تكون مطابقة لمعايير وشروط الهيئة العامة للدواء المصرية، وسارية الصلاحية وخالية من أي تلف.</li>
+            <li>المنصة لا تتحمل أي مسؤولية عن جودة المنتجات أو صحة البيانات والمعلومات المعروضة من قبل الصيدليات المشاركة، وتقع المسؤولية الكاملة على عاتق الصيدلية العارضة.</li>
+            <li>باستخدامك للموقع، فإنك تقر وتوافق على الالتزام الكامل بهذه الشروط والأحكام. تحتفظ المنصة بحق تعديلها أو تحديثها في أي وقت، ويتم الإعلان عن أي تعديلات من خلال هذه الصفحة.</li>
+          </ul>
+          <p class="mt-4 text-center text-sm text-slate-600">للاستفسارات أو الشكاوى، يرجى الاتصال بنا عبر التليجرام. آخر تحديث: 26 سبتمبر 2025.</p>
+        </div>
+      </div>
+      <div class="p-4 bg-slate-50 border-t mt-auto">
+        <button id="accept-disclaimer-btn" class="w-full bg-teal-500 hover:bg-teal-600 text-white font-bold py-3 px-4 rounded-lg transition-colors">
+          أوافق على الشروط
+        </button>
+      </div>
+    </div>
+  </div>
+  <!-- Auth Modal -->
+  <div id="auth-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black bg-opacity-50 p-4">
+    <div class="modal-content bg-white rounded-2xl shadow-xl w-full max-w-lg max-h-[90vh] flex flex-col">
+      <div class="p-5 border-b flex justify-between items-start">
+        <h2 id="modal-title" class="text-xl font-bold text-slate-800">تسجيل جديد</h2>
+        <button id="close-auth-btn" class="text-slate-400 hover:text-slate-600">&times;</button>
+      </div>
+      <div class="p-6 overflow-y-auto">
+        <form id="auth-form" novalidate>
+          <input type="hidden" id="auth-type" value="register">
+          <div id="register-fields" class="grid grid-cols-1 gap-4">
+            <div>
+              <label for="pharmacy-name" class="font-semibold text-slate-700 mb-1 block">اسم الصيدلية</label>
+              <input type="text" id="pharmacy-name" class="w-full p-2 border rounded-md focus:ring-teal-500 focus:border-teal-500">
+            </div>
+            <div>
+              <label for="phone" class="font-semibold text-slate-700 mb-1 block">رقم الهاتف (تليجرام)</label>
+              <input type="tel" id="phone" class="w-full p-2 border rounded-md focus:ring-teal-500 focus:border-teal-500">
+            </div>
+            <div>
+              <label for="password" class="font-semibold text-slate-700 mb-1 block">كلمة السر</label>
+              <input type="password" id="password" class="w-full p-2 border rounded-md focus:ring-teal-500 focus:border-teal-500">
+            </div>
+            <div>
+              <label for="confirm-password" class="font-semibold text-slate-700 mb-1 block">تأكيد كلمة السر</label>
+              <input type="password" id="confirm-password" class="w-full p-2 border rounded-md focus:ring-teal-500 focus:border-teal-500">
+            </div>
+            <div>
+              <label for="address" class="font-semibold text-slate-700 mb-1 block">عنوان الصيدلية</label>
+              <textarea id="address" rows="2" class="w-full p-2 border rounded-md focus:ring-teal-500 focus:border-teal-500"></textarea>
+            </div>
+          </div>
+          <div id="login-fields" class="grid grid-cols-1 gap-4 hidden">
+            <div>
+              <label for="phone-login" class="font-semibold text-slate-700 mb-1 block">رقم الهاتف</label>
+              <input type="tel" id="phone-login" class="w-full p-2 border rounded-md focus:ring-teal-500 focus:border-teal-500">
+            </div>
+            <div>
+              <label for="password-login" class="font-semibold text-slate-700 mb-1 block">كلمة السر</label>
+              <input type="password" id="password-login" class="w-full p-2 border rounded-md focus:ring-teal-500 focus:border-teal-500">
+            </div>
+          </div>
+        </form>
+      </div>
+      <div class="p-4 bg-slate-50 border-t mt-auto">
+        <button id="submit-auth-btn" class="w-full bg-teal-500 hover:bg-teal-600 text-white font-bold py-3 px-4 rounded-lg transition-colors">
+          تسجيل
+        </button>
+        <div id="auth-status" class="text-center mt-2"></div>
+        <p class="text-center text-sm text-slate-500 mt-2">
+          <a href="#" id="switch-auth" class="text-teal-500 hover:underline">لديك حساب؟ قم بالدخول</a>
+        </p>
+      </div>
+    </div>
+  </div>
+  <!-- Confirm Order Modal -->
+  <div id="confirm-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black bg-opacity-50 p-4">
+    <div class="modal-content bg-white rounded-2xl shadow-xl w-full max-w-lg max-h-[90vh] flex flex-col">
+      <div class="p-5 border-b flex justify-between items-start">
+        <h2 class="text-xl font-bold text-slate-800">تأكيد الطلب</h2>
+        <button id="close-confirm-btn" class="text-slate-400 hover:text-slate-600">&times;</button>
+      </div>
+      <div class="p-6 overflow-y-auto">
+        <div id="confirm-order-details"></div>
+        <div id="confirm-user-details" class="mt-4 p-4 bg-slate-50 rounded"></div>
+      </div>
+      <div class="p-4 bg-slate-50 border-t mt-auto">
+        <button id="submit-confirm-btn" class="w-full bg-teal-500 hover:bg-teal-600 text-white font-bold py-3 px-4 rounded-lg transition-colors">
+          إرسال الطلب
+        </button>
+        <div id="confirm-status" class="text-center mt-2"></div>
+      </div>
+    </div>
+  </div>
+  <!-- Success Overlay -->
+  <div id="success-overlay" class="fixed inset-0 z-50 hidden items-center justify-center bg-black bg-opacity-60">
+      <div class="text-center text-white animate-pulse">
+          <i class="fas fa-check-circle text-8xl text-green-400 mb-4"></i>
+          <h2 class="text-3xl font-bold">تم تأكيد الطلب</h2>
+          <p class="text-lg mt-2">سيتم التواصل معك قريباً</p>
+      </div>
+  </div>
+  <script>
+    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbw2liABztwCljtmT8zCsu7IFjdolk5XT4Fp5BzpN2H_wBReCto-jTJ1m6ilpS1PFnsEQg/exec";
+    let allProducts = [];
+    let filteredProducts = [];
+    let displayedProducts = [];
+    let fuse = null;
+    let intersectionObserver;
+    let isFiltering = false;
+    let selectedProducts = [];
+    const ITEMS_PER_PAGE = 20;
+    let currentUser = JSON.parse(localStorage.getItem('dawaUser') || 'null');
+    const $ = (selector) => document.querySelector(selector);
+
+    // Simple phonetic transliteration map
+    const simpleMap = {
+      'ا': 'a', 'أ': 'a', 'إ': 'a', 'آ': 'a', 'ء': '', 'ئ': 'i',
+      'ب': 'b',
+      'ت': 't', 'ث': 't',
+      'ج': 'j',
+      'ح': 'h',
+      'خ': 'kh',
+      'د': 'd', 'ذ': 'd',
+      'ر': 'r',
+      'ز': 'z',
+      'س': 's', 'ش': 'sh', 'ص': 's', 'ض': 'd',
+      'ط': 't',
+      'ظ': 'z',
+      'ع': 'a', 'غ': 'g',
+      'ف': 'f',
+      'ق': 'q',
+      'ك': 'k',
+      'ل': 'l',
+      'م': 'm',
+      'ن': 'n',
+      'ه': 'h', 'ة': 'a',
+      'و': 'w',
+      'ي': 'y', 'ى': 'a'
+    };
+
+    function transliterate(text) {
+      if (!text) return '';
+      // Remove diacritics
+      text = text.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+      return text.split('').map(char => simpleMap[char] || char).join('').toLowerCase();
+    }
+
+    // Keyboard layout correction map (English QWERTY to Arabic)
+    const keyboardMap = {
+      "q": "ض", "w": "ص", "e": "ث", "r": "ق", "t": "ف", "y": "غ", "u": "ع", "i": "ه",
+      "o": "خ", "p": "ح", "{": "ج", "}": "د",
+      "a": "ش", "s": "س", "d": "ي", "f": "ب", "g": "ل", "h": "ا",
+      "j": "ت", "k": "ن", "l": "م", ";": "ك", "'": "ط",
+      "z": "ئ", "x": "ء", "c": "ؤ", "v": "ر", "b": "لا", "n": "ى", "m": "ة",
+      ",": "و", ".": "ز", "/": "ظ", "`": "ذ"
+    };
+
+    function correctKeyboardLayout(input) {
+      return input.toLowerCase().split('').map(char => keyboardMap[char] || char).join('');
+    }
+
+    function showToast(message, type = 'info') {
+      const color = type === 'success' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800';
+      $('#status-area').innerHTML = `<div class="${color} p-3 rounded-md text-sm">${message}</div>`;
+      setTimeout(() => { if ($('#status-area')) $('#status-area').innerHTML = ''; }, 4000);
+    }
+    function updateSelectedCount() {
+      const count = selectedProducts.length;
+      $('#count-num').textContent = count;
+      const btn = $('#confirm-order-btn');
+      if (count > 0) {
+        $('#selected-count').classList.remove('hidden');
+        btn.classList.remove('hidden');
+      } else {
+        $('#selected-count').classList.add('hidden');
+        btn.classList.add('hidden');
+      }
+    }
+    function escapeHtml(text) {
+      if (!text && text !== 0) return '';
+      return String(text).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'})[m]);
+    }
+    function closeConfirmModal() {
+      $('#confirm-modal').classList.add('hidden');
+      $('#confirm-modal').classList.remove('flex');
+      $('#confirm-status').innerHTML = '';
+    }
+    function openConfirmModal() {
+      if (selectedProducts.length === 0) return;
+      let detailsHtml = '';
+      selectedProducts.forEach((p, index) => {
+        detailsHtml += `
+          <div class="p-2 border-b">
+            <h4 class="font-bold">${escapeHtml(p.name)}</h4>
+            <p>السعر: ${p.publicPrice.toFixed(2)} ج.م - الخصم: ${p.discount}%</p>
+            <label class="block mt-1">الكمية: <input type="number" min="1" max="${p.quantity}" value="${p.requestedQty}" data-index="${index}" class="qty-input border rounded p-1"></label>
+          </div>
+        `;
+      });
+      $('#confirm-order-details').innerHTML = `<div class="mb-4">${detailsHtml}</div>`;
+      const qtyInputs = $('#confirm-order-details').querySelectorAll('.qty-input');
+      qtyInputs.forEach(input => {
+        input.addEventListener('change', (e) => {
+          const index = parseInt(e.target.dataset.index);
+          const newQty = parseInt(e.target.value);
+          if (newQty > selectedProducts[index].quantity) {
+            showToast('الكمية أكبر من المتاحة', 'error');
+            e.target.value = selectedProducts[index].requestedQty;
+            return;
+          }
+          selectedProducts[index].requestedQty = newQty;
+        });
+      });
+      const userDetails = `
+        <h4 class="font-bold mb-2">بيانات الصيدلية:</h4>
+        <p><strong>الاسم:</strong> ${escapeHtml(currentUser.pharmacyName)}</p>
+        <p><strong>الهاتف:</strong> ${escapeHtml(currentUser.phone)}</p>
+        <p><strong>العنوان:</strong> ${escapeHtml(currentUser.address)}</p>
+      `;
+      $('#confirm-user-details').innerHTML = userDetails;
+      $('#confirm-modal').classList.remove('hidden');
+      $('#confirm-modal').classList.add('flex');
+    }
+    function logout(reason = '') {
+      localStorage.removeItem('dawaUser');
+      currentUser = null;
+      selectedProducts = [];
+      updateSelectedCount();
+      $('#header').style.display = 'none';
+      $('#auth-overlay').classList.remove('hidden');
+      if (reason) showToast(reason, 'error');
+    }
+    function initApp() {
+      if (currentUser) {
+        if (currentUser.status !== 'approved') {
+          logout(currentUser.status === 'blocked' ? 'حسابك محظور' : 'طلبك قيد الموافقة');
+          return;
+        }
+        $('#user-greeting').textContent = `مرحباً، ${currentUser.pharmacyName}`;
+        $('#header').style.display = 'flex';
+        $('#auth-overlay').classList.add('hidden');
+        fetchProducts();
+      } else {
+        $('#header').style.display = 'none';
+        $('#auth-overlay').classList.remove('hidden');
+      }
+    }
+    function closeAuthModal() {
+      $('#auth-modal').classList.add('hidden');
+      $('#auth-modal').classList.remove('flex');
+      $('#auth-form').reset();
+      $('#auth-status').innerHTML = '';
+    }
+    async function submitAuth() {
+      console.log('submitAuth started');
+      const type = $('#auth-type').value;
+      const form = $('#auth-form');
+      let isValid = true;
+      if (type === 'register') {
+        if (!$('#pharmacy-name').value.trim()) { isValid = false; showToast('اسم الصيدلية مطلوب', 'error'); }
+        if (!$('#phone').value.trim()) { isValid = false; showToast('رقم الهاتف مطلوب', 'error'); }
+        if (!$('#password').value.trim()) { isValid = false; showToast('كلمة السر مطلوبة', 'error'); }
+        if ($('#password').value !== $('#confirm-password').value) { isValid = false; showToast('كلمة السر غير متطابقة', 'error'); }
+        if (!$('#address').value.trim()) { isValid = false; showToast('العنوان مطلوب', 'error'); }
+      } else {
+        if (!$('#phone-login').value.trim()) { isValid = false; showToast('رقم الهاتف مطلوب', 'error'); }
+        if (!$('#password-login').value.trim()) { isValid = false; showToast('كلمة السر مطلوبة', 'error'); }
+      }
+      if (!isValid) {
+        console.log('Validation failed');
+        return;
+      }
+      const btn = $('#submit-auth-btn');
+      btn.disabled = true;
+      const originalText = btn.innerHTML;
+      btn.innerHTML = '<div class="spinner mx-auto w-6 h-6 border-2"></div>';
+      const passwordHash = CryptoJS.MD5(type === 'register' ? $('#password').value : $('#password-login').value).toString();
+      const phone = type === 'register' ? $('#phone').value : $('#phone-login').value;
+      const formData = new FormData();
+      formData.append('action', type);
+      formData.append('phone', phone);
+      formData.append('passwordHash', passwordHash);
+      if (type === 'register') {
+        formData.append('pharmacyName', $('#pharmacy-name').value);
+        formData.append('address', $('#address').value);
+      }
+      try {
+        console.log('Sending request to GAS...');
+        const res = await fetch(SCRIPT_URL, { method: 'POST', body: formData });
+        const resultText = await res.text();
+        console.log('Response text:', resultText);
+        const result = JSON.parse(resultText);
+        console.log('Parsed result:', result);
+        if (result.success) {
+          if (type === 'register') {
+            showToast('تم إرسال طلب التسجيل، انتظر الموافقة.', 'success');
+            closeAuthModal();
+          } else {
+            currentUser = {
+              userId: result.userId,
+              pharmacyName: result.pharmacyName,
+              phone,
+              address: result.address,
+              status: result.status
+            };
+            localStorage.setItem('dawaUser', JSON.stringify(currentUser));
+            showToast('تم تسجيل الدخول بنجاح', 'success');
+            closeAuthModal();
+            initApp();
+          }
+        } else {
+          throw new Error(result.error || 'فشل العملية');
+        }
+      } catch (err) {
+        console.error('Error in submitAuth:', err);
+        $('#auth-status').innerHTML = `<p class="text-red-500 text-sm">${escapeHtml(err.message)}</p>`;
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = originalText;
+      }
+    }
+    function openAuthModal(type) {
+      $('#auth-type').value = type;
+      $('#modal-title').textContent = type === 'register' ? 'تسجيل جديد' : 'تسجيل الدخول';
+      $('#submit-auth-btn').textContent = type === 'register' ? 'تسجيل' : 'دخول';
+      $('#switch-auth').textContent = type === 'register' ? 'لديك حساب؟ قم بالدخول' : 'حساب جديد؟ سجل الآن';
+      const registerFields = $('#register-fields');
+      const loginFields = $('#login-fields');
+      registerFields.classList.toggle('hidden', type !== 'register');
+      loginFields.classList.toggle('hidden', type !== 'login');
+      const registerInputs = ['pharmacy-name', 'phone', 'password', 'confirm-password', 'address'];
+      const loginInputs = ['phone-login', 'password-login'];
+      if (type === 'register') {
+        registerInputs.forEach(id => document.getElementById(id).setAttribute('required', 'true'));
+        loginInputs.forEach(id => document.getElementById(id).removeAttribute('required'));
+      } else {
+        loginInputs.forEach(id => document.getElementById(id).setAttribute('required', 'true'));
+        registerInputs.forEach(id => document.getElementById(id).removeAttribute('required'));
+      }
+      $('#auth-modal').classList.remove('hidden');
+      $('#auth-modal').classList.add('flex');
+      setTimeout(() => {
+        const input = type === 'register' ? $('#pharmacy-name') : $('#phone-login');
+        if (input) input.focus();
+      }, 100);
+      if (type === 'login' && currentUser) {
+        $('#phone-login').value = currentUser.phone;
+      }
+    }
+    async function submitOrder() {
+      if (!currentUser) {
+        showToast('يجب تسجيل الدخول أولاً', 'error');
+        return;
+      }
+      if (currentUser.status !== 'approved') {
+        const message = currentUser.status === 'blocked' ? 'حسابك محظور' : 'طلبك قيد الموافقة';
+        showToast(message, 'error');
+        logout();
+        return;
+      }
+      const btn = $('#submit-confirm-btn');
+      btn.disabled = true;
+      const originalText = btn.innerHTML;
+      btn.innerHTML = '<div class="spinner mx-auto w-6 h-6 border-2"></div>';
+      const orderData = selectedProducts.map(p => ({
+        id: p.id,
+        name: p.name,
+        price: parseFloat(p.publicPrice) || 0,
+        discount: p.discount || 0,
+        quantity: p.requestedQty || 1
+      }));
+      const formData = new FormData();
+      formData.append('action', 'purchase');
+      formData.append('order', JSON.stringify(orderData));
+      formData.append('userId', currentUser.userId);
+      formData.append('pharmacyName', currentUser.pharmacyName);
+      formData.append('pharmacyPhone', currentUser.phone);
+      formData.append('pharmacyAddress', currentUser.address);
+      try {
+        const res = await fetch(SCRIPT_URL, { method: 'POST', body: formData });
+        const result = await res.json();
+        if (result.success) {
+          closeConfirmModal();
+          $('#success-overlay').classList.remove('hidden');
+          $('#success-overlay').classList.add('flex');
+          setTimeout(() => {
+            $('#success-overlay').classList.add('hidden');
+            $('#success-overlay').classList.remove('flex');
+          }, 2500);
+         
+          orderData.forEach(od => {
+            const product = allProducts.find(p => p.id === od.id);
+            if (product) product.quantity -= od.quantity;
+          });
+          selectedProducts = [];
+          updateSelectedCount();
+          applyFilters();
+          showToast('تم إرسال الطلب بنجاح', 'success');
+        } else {
+          throw new Error(result.error || 'فشل إرسال الطلب');
+        }
+      } catch (err) {
+        $('#confirm-status').innerHTML = `<p class="text-red-500 text-sm">${escapeHtml(err.message)}</p>`;
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = originalText;
+      }
+    }
+    function renderProducts(products, append = false) {
+        const grid = $('#products-grid');
+        if (!append) {
+            grid.innerHTML = '';
+        }
+        if (products.length === 0 && !append) {
+            grid.innerHTML = `<div class="col-span-full text-center py-10 text-slate-500">
+                <i class="fas fa-box-open text-4xl mb-3"></i><p>لا توجد أصناف تطابق بحثك.</p>
+            </div>`;
+            $('#loader-sentinel').classList.add('hidden');
+            $('#loading-more').classList.add('hidden');
+            return;
+        }
+        const fragment = document.createDocumentFragment();
+        products.forEach(p => {
+            const isSelected = selectedProducts.some(sp => sp.id === p.id);
+            const disabled = p.quantity <= 0 ? 'opacity-50 pointer-events-none' : '';
+            const card = document.createElement('div');
+            card.className = `product-card bg-white rounded-xl shadow-sm border border-slate-200 p-4 flex flex-col ${disabled} ${isSelected ? 'ring-2 ring-teal-500' : ''}`;
+            card.dataset.productId = p.id;
+            const imgHtml = p.imageUrl ? `<img src="${p.imageUrl}" alt="${p.name}" class="w-full h-32 object-cover rounded mb-2">` : '';
+            let titleLines = (p.name || '').split('+').map(line => line.trim()).filter(Boolean);
+            let titleHTML = titleLines.map(line => `<div>${escapeHtml(line)}</div>`).join('');
+            let descriptionHTML = '';
+            if (p.description && typeof p.description === 'string') {
+              const descLines = p.description.split(/\n+/).map(line => line.trim()).filter(Boolean);
+              if (descLines.length > 0) {
+                descriptionHTML = `
+                    <div class="product-description mt-2">
+                        ${descLines.map(line => `<div>${escapeHtml(line)}</div>`).join('')}
+                    </div>`;
+              }
+            }
+            card.innerHTML = `
+                ${imgHtml}
+                <div class="flex-grow">
+                    <h3 class="font-bold text-lg text-slate-800 leading-tight">${titleHTML}</h3>
+                    ${descriptionHTML}
+                </div>
+                <div class="mt-4 pt-4 border-t border-slate-100">
+                    <div class="flex justify-between items-center">
+                        <div>
+                            <div class="text-xs text-slate-500">سعر الجمهور</div>
+                            <div class="font-bold text-xl text-teal-600">${p.publicPrice.toFixed(2)} ج.م</div>
+                        </div>
+                        <div class="text-left">
+                            <div class="text-xs text-slate-500">عرض الصيدلي</div>
+                            <div class="font-bold text-lg text-red-500">${p.discount}%</div>
+                        </div>
+                    </div>
+                    <div class="text-xs text-slate-400 mt-2">متاح: ${p.quantity}</div>
+                    <div class="flex items-center gap-2 mt-2">
+                        <label class="text-xs text-slate-500">الكمية المطلوبة:</label>
+                        <input type="number" min="1" max="${p.quantity}" value="1" class="qty-input form-input border rounded p-1" data-product-id="${p.id}">
+                    </div>
+                </div>
+                <button data-id="${p.id}" class="add-to-order-btn mt-4 w-full ${isSelected ? 'bg-green-600' : 'bg-slate-800'} text-white py-2 rounded-lg font-semibold hover:${isSelected ? 'bg-green-700' : 'bg-slate-900'} transition">
+                    ${isSelected ? 'مُحدد' : 'إضافة إلى الطلب'}
+                </button>
+            `;
+            fragment.appendChild(card);
+        });
+        grid.appendChild(fragment);
+    }
+    function loadMoreProducts() {
+        const sourceList = isFiltering ? filteredProducts : allProducts;
+        const currentCount = displayedProducts.length;
+        if (currentCount >= sourceList.length) {
+            if (intersectionObserver) intersectionObserver.disconnect();
+            $('#loader-sentinel').classList.add('hidden');
+            return;
+        }
+        const nextProducts = sourceList.slice(currentCount, currentCount + ITEMS_PER_PAGE);
+        if (nextProducts.length > 0) {
+            $('#loading-more').classList.remove('hidden');
+            setTimeout(() => {
+                displayedProducts.push(...nextProducts);
+                renderProducts(nextProducts, true);
+                $('#loading-more').classList.add('hidden');
+                if (displayedProducts.length >= sourceList.length) {
+                    if (intersectionObserver) intersectionObserver.disconnect();
+                    $('#loader-sentinel').classList.add('hidden');
+                }
+            }, 300);
+        }
+    }
+    function setupIntersectionObserver() {
+        if (intersectionObserver) {
+            intersectionObserver.disconnect();
+        }
+        const options = { root: null, rootMargin: '0px', threshold: 0.1 };
+        intersectionObserver = new IntersectionObserver((entries) => {
+            if (entries[0].isIntersecting) {
+                loadMoreProducts();
+            }
+        }, options);
+    }
+    function debounce(func, delay) {
+      let timeout;
+      return function(...args) {
+          clearTimeout(timeout);
+          timeout = setTimeout(() => func.apply(this, args), delay);
+      };
+    }
+    function applyFilters() {
+        const searchTerm = $('#search-input').value.trim();
+        const region = $('#region-filter').value;
+        const sort = $('#sort-filter').value;
+        isFiltering = !!(searchTerm || region || sort);
+        let sourceList = allProducts;
+        if (searchTerm) {
+          let results = [];
+          if (/[a-z]/i.test(searchTerm)) {
+            const corrected = correctKeyboardLayout(searchTerm);
+            const res1 = fuse.search(searchTerm);
+            const res2 = fuse.search(corrected);
+            const seen = new Set();
+            results = [...res1, ...res2].filter(r => {
+              if (seen.has(r.item.id)) return false;
+              seen.add(r.item.id);
+              return true;
+            });
+          } else {
+            results = fuse.search(searchTerm);
+          }
+          sourceList = results.map(r => r.item);
+        }
+        if (region) {
+          sourceList = sourceList.filter(p => p.region === region);
+        }
+        // Apply sorting
+        if (sort) {
+          sourceList = [...sourceList].sort((a, b) => {
+            if (sort === 'discount-desc') return b.discount - a.discount;
+            if (sort === 'discount-asc') return a.discount - b.discount;
+            if (sort === 'price-desc') return b.publicPrice - a.publicPrice;
+            if (sort === 'price-asc') return a.publicPrice - b.publicPrice;
+            return 0;
+          });
+        }
+        filteredProducts = sourceList;
+        resetAndRenderFirstPage();
+    }
+    function resetAndRenderFirstPage() {
+        const sourceList = isFiltering ? filteredProducts : allProducts;
+        displayedProducts = sourceList.slice(0, ITEMS_PER_PAGE);
+        renderProducts(displayedProducts, false);
+        if (sourceList.length > ITEMS_PER_PAGE) {
+            $('#loader-sentinel').classList.remove('hidden');
+            if (intersectionObserver) intersectionObserver.observe($('#loader-sentinel'));
+        } else {
+            if (intersectionObserver) intersectionObserver.disconnect();
+            $('#loader-sentinel').classList.add('hidden');
+        }
+    }
+    async function fetchProducts() {
+      console.log('fetchProducts started');
+      $('#loading').style.display = 'block';
+      $('#products-grid').classList.add('hidden');
+      try {
+        console.log('Fetching from URL:', `${SCRIPT_URL}?action=getProducts`);
+        const res = await fetch(`${SCRIPT_URL}?action=getProducts`);
+        console.log('Response status:', res.status);
+        console.log('Response ok:', res.ok);
+        const resultText = await res.text();
+        console.log('Raw response text:', resultText);
+        const data = JSON.parse(resultText);
+        console.log('Parsed data:', data);
+        allProducts = Array.isArray(data) ? data : [];
+        console.log('All products length:', allProducts.length);
+        // Add transliterated names
+        allProducts.forEach(p => {
+          p.transliteratedName = transliterate(p.name);
+        });
+        fuse = new Fuse(allProducts, { keys: ['name', 'description', 'transliteratedName'], threshold: 0.3, ignoreLocation: true });
+        const regions = [...new Set(allProducts.map(p => p.region).filter(Boolean))].sort((a,b) => a.localeCompare(b));
+        const regionFilter = $('#region-filter');
+        regionFilter.innerHTML = '<option value="">كل المناطق</option>';
+        regions.forEach(r => {
+          const option = document.createElement('option');
+          option.value = r;
+          option.textContent = r;
+          regionFilter.appendChild(option);
+        });
+        setupIntersectionObserver();
+        resetAndRenderFirstPage();
+        $('#products-grid').classList.remove('hidden');
+        console.log('Products loaded successfully');
+      } catch (err) {
+        console.error('Detailed error in fetchProducts:', err);
+        showToast(`حدث خطأ أثناء تحميل الأصناف: ${err.message}`, 'error');
+      } finally {
+        $('#loading').style.display = 'none';
+      }
+    }
+    // دوال الـ Disclaimer Modal
+    function shouldShowDisclaimer() {
+      const lastShown = localStorage.getItem('disclaimerLastShown');
+      const today = new Date().toDateString();
+      return lastShown !== today;
+    }
+    function showDisclaimerModal() {
+      $('#disclaimer-modal').classList.remove('hidden');
+      $('#disclaimer-modal').classList.add('flex');
+    }
+    function closeDisclaimerModal() {
+      $('#disclaimer-modal').classList.add('hidden');
+      $('#disclaimer-modal').classList.remove('flex');
+      localStorage.setItem('disclaimerLastShown', new Date().toDateString());
+    }
+    function setupEventListeners() {
+      $('#products-grid').addEventListener('click', e => {
+        const btn = e.target.closest('.add-to-order-btn');
+        if (btn) {
+          const productId = parseInt(btn.dataset.id);
+          const product = allProducts.find(p => p.id === productId);
+          if (product) {
+            const card = btn.closest('.product-card');
+            const qtyInput = card.querySelector('.qty-input');
+            const requestedQty = parseInt(qtyInput.value) || 1;
+            if (requestedQty > product.quantity) {
+              showToast('الكمية المطلوبة أكبر من المتاحة', 'error');
+              return;
+            }
+            const index = selectedProducts.findIndex(sp => sp.id === productId);
+            if (index > -1) {
+              selectedProducts.splice(index, 1);
+            } else {
+              selectedProducts.push({ ...product, requestedQty });
+            }
+            updateSelectedCount();
+            applyFilters(); // Refresh
+          }
+        }
+      });
+      $('#register-btn').addEventListener('click', () => openAuthModal('register'));
+      $('#login-btn').addEventListener('click', () => openAuthModal('login'));
+      $('#switch-auth').addEventListener('click', (e) => {
+        e.preventDefault();
+        const isRegister = $('#auth-type').value === 'register';
+        openAuthModal(isRegister ? 'login' : 'register');
+      });
+      $('#close-auth-btn').addEventListener('click', closeAuthModal);
+      $('#submit-auth-btn').addEventListener('click', submitAuth);
+      $('#auth-modal').addEventListener('click', e => {
+        if (e.target.id === 'auth-modal') closeAuthModal();
+      });
+      $('#close-confirm-btn').addEventListener('click', closeConfirmModal);
+      $('#confirm-modal').addEventListener('click', e => {
+        if (e.target.id === 'confirm-modal') closeConfirmModal();
+      });
+      $('#submit-confirm-btn').addEventListener('click', submitOrder);
+      $('#logout-btn').addEventListener('click', () => logout());
+      // Event listeners للـ Disclaimer Modal
+      $('#accept-disclaimer-btn').addEventListener('click', closeDisclaimerModal);
+      $('#close-disclaimer-btn').addEventListener('click', closeDisclaimerModal);
+      $('#disclaimer-modal').addEventListener('click', e => {
+        if (e.target.id === 'disclaimer-modal') closeDisclaimerModal();
+      });
+      const debouncedSearch = debounce(() => applyFilters(), 300);
+      $('#search-input').addEventListener('input', debouncedSearch);
+      $('#region-filter').addEventListener('change', () => applyFilters());
+      $('#sort-filter').addEventListener('change', () => applyFilters());
+    }
+    document.addEventListener('DOMContentLoaded', () => {
+      if (shouldShowDisclaimer()) {
+        showDisclaimerModal(); // عرض الـ modal مرة واحدة يومياً
+      }
+      initApp();
+      setupEventListeners();
+    });
+  </script>
+</body>
+</html>
