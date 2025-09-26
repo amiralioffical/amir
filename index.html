@@ -1,181 +1,188 @@
-<!doctype html>
-<html lang=ar dir=rtl>
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
 <head>
-<meta charset=utf-8>
-<meta name=viewport content="width=device-width,initial-scale=1">
-<title>DawaLink</title>
-<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap" rel=stylesheet>
-<link rel=stylesheet href=https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>DawaLink</title>
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
 </head>
 <body>
-<div id=app class="max-w-7xl mx-auto p-4 sm:p-6">
-<div id=auth-overlay class="fixed inset-0 bg-white z-50 flex items-center justify-center hidden">
-<div class="text-center p-8 bg-white rounded-lg shadow-lg">
-<h2 id=auth-title class="text-xl font-bold mb-4">تسجيل الدخول أو التسجيل</h2>
-<button id=login-btn class="bg-teal-500 text-white px-4 py-2 rounded mr-2">دخول</button>
-<button id=register-btn class="bg-blue-500 text-white px-4 py-2 rounded">تسجيل جديد</button>
-</div>
-</div>
-<header class="flex flex-col sm:flex-row items-center justify-between gap-4 mb-8" id=header style=display:none>
-<div class="flex items-center gap-3">
-<div class="w-12 h-12 rounded-lg bg-teal-100 flex items-center justify-center text-teal-600">
-<i class="fas fa-pills text-2xl"></i>
-</div>
-<div>
-<h1 class="text-2xl sm:text-3xl font-bold text-slate-800">دوا لينك</h1>
-<p class="text-sm text-slate-500" id=user-greeting></p>
-</div>
-</div>
-<div class="w-full sm:w-auto flex items-center gap-4">
-<div class="relative flex-grow">
-<input id=search-input type=search placeholder="ابحث عن صنف..." class="w-full rounded-lg pl-10 pr-4 py-2.5 shadow-sm bg-white border-slate-200 focus:outline-none focus:ring-2 focus:ring-teal-200">
-<i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
-</div>
-<div class=relative>
-<select id=region-filter class="rounded-lg px-4 py-2.5 shadow-sm bg-white border-slate-200 focus:outline-none focus:ring-2 focus:ring-teal-200 appearance-none pr-8">
-<option value="">كل المناطق</option>
-</select>
-<i class="fas fa-chevron-down absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
-</div>
-<div class=relative>
-<select id=sort-filter class="rounded-lg px-4 py-2.5 shadow-sm bg-white border-slate-200 focus:outline-none focus:ring-2 focus:ring-teal-200 appearance-none pr-8">
-<option value="">ترتيب افتراضي</option>
-<option value=discount-desc>أعلى خصم</option>
-<option value=discount-asc>أقل خصم</option>
-<option value=price-desc>أعلى سعر</option>
-<option value=price-asc>أقل سعر</option>
-</select>
-<i class="fas fa-chevron-down absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
-</div>
-<button id=logout-btn class="bg-red-500 text-white px-4 py-2 rounded">خروج</button>
-</div>
-</header>
-<div id=selected-count class="selected-count hidden">
-<i class="fas fa-shopping-cart mr-2"></i> <span id=count-num>0</span> منتج مختار
-</div>
-<div id=status-area class=mb-4></div>
-<div id=loading class="text-center py-12"><div class="spinner mx-auto"></div><p class="mt-3 text-slate-500">جاري تحميل الأصناف...</p></div>
-<main id=products-grid class="hidden grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5"></main>
-<div id=loader-sentinel></div>
-<div id=loading-more class="text-center py-8 hidden"><div class="spinner mx-auto"></div></div>
-<button id=confirm-order-btn class="fixed bottom-24 right-4 bg-teal-500 text-white p-4 rounded-full shadow-lg hidden z-40" onclick=openConfirmModal()>
-<i class="fas fa-check text-xl"></i>
-</button>
-</div>
-<div class=telegram-btn>
-<a href="https://t.me/DawaLink_web?start=%D9%85%D8%B1%D8%AD%D8%A8%D8%A7%D9%8B%D8%8C%20%D8%A3%D9%88%D8%AF%20%D8%B9%D8%B1%D8%B6%20%D8%B5%D9%86%D9%81%20%D8%AF%D9%88%D8%A7%D8%A6%D9%8A%20%D8%B9%D9%84%D9%89%20%D8%A7%D9%84%D9%85%D9%88%D9%82%D8%B9%20%D8%A3%D9%88%20%D9%84%D8%AF%D9%8A%20%D8%A7%D8%B3%D8%AA%D9%81%D8%B3%D8%A7%D8%B1%20%D8%AD%D9%88%D9%84%20%D8%AF%D9%88%D8%A7%20%D9%84%D9%8A%D9%86%D9%83" target=_blank>
-<i class="fab fa-telegram"></i>
-عرض دواء أو استفسارات
-</a>
-</div>
-<div id=disclaimer-modal class="fixed inset-0 z-40 hidden flex items-center justify-center bg-black bg-opacity-50 p-4">
-<div class="modal-content bg-white rounded-2xl shadow-xl w-full max-w-2xl max-h-[80vh] overflow-y-auto flex flex-col">
-<div class="p-5 border-b flex justify-between items-start">
-<h2 class="text-xl font-bold text-slate-800">شروط الاستخدام</h2>
-<button id=close-disclaimer-btn class="text-slate-400 hover:text-slate-600">&times;</button>
-</div>
-<div class="p-6 flex-grow overflow-y-auto">
-<div class=warning>
-<i class="fas fa-exclamation-triangle"></i>
-<strong>تحذير هام:</strong> هذا الموقع مخصص فقط للصيدليات المسجلة لدى الهيئة العامة للدواء. أي استخدام غير مصرح به قد يعرضك للمساءلة القانونية.
-</div>
-<div class=disclaimer-text>
-<p>مرحبًا بكم في <strong>دوا لينك</strong>، المنصة التي تهدف إلى تسهيل التواصل بين الصيدليات المصرية بشأن الأدوية الراكدة بكفاءة وأمان. نحن هنا لنساعد في تبادل المعلومات والتنسيق بين الصيدليات، بما يساهم في تقليل الفاقد وتعزيز الاستدامة في سلسلة التوريد الدوائية. من خلال عرض البيانات المقدمة من الصيدليات، نتيح لكم الوصول السريع إلى الأصناف المتاحة، مع الالتزام بأعلى معايير الخصوصية والأمان.</p>
-<p><strong>إخلاء المسؤولية:</strong> يُرجى العلم أن <strong>دوا لينك</strong> لا تقوم ببيع أو شراء أي أدوية أو منتجات دوائية، ولا تتدخل في أي معاملات مالية أو تحويلات أموال بين الصيدليات. يقتصر دورنا فقط على توفير وسيلة اتصال بين الصيدليات المشاركة، دون أي تدخل في محتوى العروض أو الاتفاقيات. تقع المسؤولية الكاملة عن صحة الأدوية وسلامتها وتاريخ صلاحيتها والامتثال للقوانين واللوائح المصرية على عاتق الصيدليات المشاركة وحدها. المنصة غير مسؤولة عن أي اتفاقيات تجارية أو صفقات أو التزامات مالية أو قانونية تتم بين الأطراف، ويُنصح بشدة بالتحقق من صحة الأدوية قبل أي تعامل.</p>
-<p><strong>تحذيرات إضافية:</strong></p>
-<ul class="list-disc list-inside space-y-1 mt-2">
-<li>جميع الأصناف المعروضة من مسؤولية الصيدليات المشاركة، ويشترط أن تكون مطابقة لمعايير وشروط الهيئة العامة للدواء المصرية، وسارية الصلاحية وخالية من أي تلف.</li>
-<li>المنصة لا تتحمل أي مسؤولية عن جودة المنتجات أو صحة البيانات والمعلومات المعروضة من قبل الصيدليات المشاركة، وتقع المسؤولية الكاملة على عاتق الصيدلية العارضة.</li>
-<li>باستخدامك للموقع، فإنك تقر وتوافق على الالتزام الكامل بهذه الشروط والأحكام. تحتفظ المنصة بحق تعديلها أو تحديثها في أي وقت، ويتم الإعلان عن أي تعديلات من خلال هذه الصفحة.</li>
-</ul>
-<p class="mt-4 text-center text-sm text-slate-600">للاستفسارات أو الشكاوى، يرجى الاتصال بنا عبر التليجرام. آخر تحديث: 26 سبتمبر 2025.</p>
-</div>
-</div>
-<div class="p-4 bg-slate-50 border-t mt-auto">
-<button id=accept-disclaimer-btn class="w-full bg-teal-500 hover:bg-teal-600 text-white font-bold py-3 px-4 rounded-lg transition-colors">
-أوافق على الشروط
-</button>
-</div>
-</div>
-</div>
-<div id=auth-modal class="fixed inset-0 z-50 hidden items-center justify-center bg-black bg-opacity-50 p-4">
-<div class="modal-content bg-white rounded-2xl shadow-xl w-full max-w-lg max-h-[90vh] flex flex-col">
-<div class="p-5 border-b flex justify-between items-start">
-<h2 id=modal-title class="text-xl font-bold text-slate-800">تسجيل جديد</h2>
-<button id=close-auth-btn class="text-slate-400 hover:text-slate-600">&times;</button>
-</div>
-<div class="p-6 overflow-y-auto">
-<form id=auth-form novalidate>
-<input type=hidden id=auth-type value=register>
-<div id=register-fields class="grid grid-cols-1 gap-4">
-<div>
-<label for=pharmacy-name class="font-semibold text-slate-700 mb-1 block">اسم الصيدلية</label>
-<input id=pharmacy-name class="w-full p-2 border rounded-md focus:ring-teal-500 focus:border-teal-500">
-</div>
-<div>
-<label for=phone class="font-semibold text-slate-700 mb-1 block">رقم الهاتف (تليجرام)</label>
-<input type=tel id=phone class="w-full p-2 border rounded-md focus:ring-teal-500 focus:border-teal-500">
-</div>
-<div>
-<label for=password class="font-semibold text-slate-700 mb-1 block">كلمة السر</label>
-<input type=password id=password class="w-full p-2 border rounded-md focus:ring-teal-500 focus:border-teal-500">
-</div>
-<div>
-<label for=confirm-password class="font-semibold text-slate-700 mb-1 block">تأكيد كلمة السر</label>
-<input type=password id=confirm-password class="w-full p-2 border rounded-md focus:ring-teal-500 focus:border-teal-500">
-</div>
-<div>
-<label for=address class="font-semibold text-slate-700 mb-1 block">عنوان الصيدلية</label>
-<textarea id=address rows=2 class="w-full p-2 border rounded-md focus:ring-teal-500 focus:border-teal-500"></textarea>
-</div>
-</div>
-<div id=login-fields class="grid grid-cols-1 gap-4 hidden">
-<div>
-<label for=phone-login class="font-semibold text-slate-700 mb-1 block">رقم الهاتف</label>
-<input type=tel id=phone-login class="w-full p-2 border rounded-md focus:ring-teal-500 focus:border-teal-500">
-</div>
-<div>
-<label for=password-login class="font-semibold text-slate-700 mb-1 block">كلمة السر</label>
-<input type=password id=password-login class="w-full p-2 border rounded-md focus:ring-teal-500 focus:border-teal-500">
-</div>
-</div>
-</form>
-</div>
-<div class="p-4 bg-slate-50 border-t mt-auto">
-<button id=submit-auth-btn class="w-full bg-teal-500 hover:bg-teal-600 text-white font-bold py-3 px-4 rounded-lg transition-colors">
-تسجيل
-</button>
-<div id=auth-status class="text-center mt-2"></div>
-<p class="text-center text-sm text-slate-500 mt-2">
-<a href=# id=switch-auth class="text-teal-500 hover:underline">لديك حساب؟ قم بالدخول</a>
-</p>
-</div>
-</div>
-</div>
-<div id=confirm-modal class="fixed inset-0 z-50 hidden items-center justify-center bg-black bg-opacity-50 p-4">
-<div class="modal-content bg-white rounded-2xl shadow-xl w-full max-w-lg max-h-[90vh] flex flex-col">
-<div class="p-5 border-b flex justify-between items-start">
-<h2 class="text-xl font-bold text-slate-800">تأكيد الطلب</h2>
-<button id=close-confirm-btn class="text-slate-400 hover:text-slate-600">&times;</button>
-</div>
-<div class="p-6 overflow-y-auto">
-<div id=confirm-order-details></div>
-<div id=confirm-user-details class="mt-4 p-4 bg-slate-50 rounded"></div>
-</div>
-<div class="p-4 bg-slate-50 border-t mt-auto">
-<button id=submit-confirm-btn class="w-full bg-teal-500 hover:bg-teal-600 text-white font-bold py-3 px-4 rounded-lg transition-colors">
-إرسال الطلب
-</button>
-<div id=confirm-status class="text-center mt-2"></div>
-</div>
-</div>
-</div>
-<div id=success-overlay class="fixed inset-0 z-50 hidden items-center justify-center bg-black bg-opacity-60">
-<div class="text-center text-white animate-pulse">
-<i class="fas fa-check-circle text-8xl text-green-400 mb-4"></i>
-<h2 class="text-3xl font-bold">تم تأكيد الطلب</h2>
-<p class="text-lg mt-2">سيتم التواصل معك قريباً</p>
-</div>
-</div>
+  <div id="app" class="max-w-7xl mx-auto p-4 sm:p-6">
+    <!-- Auth Overlay -->
+    <div id="auth-overlay" class="fixed inset-0 bg-white z-50 flex items-center justify-center hidden">
+        <div class="text-center p-8 bg-white rounded-lg shadow-lg">
+            <h2 id="auth-title" class="text-xl font-bold mb-4">تسجيل الدخول أو التسجيل</h2>
+            <button id="login-btn" class="bg-teal-500 text-white px-4 py-2 rounded mr-2">دخول</button>
+            <button id="register-btn" class="bg-blue-500 text-white px-4 py-2 rounded">تسجيل جديد</button>
+        </div>
+    </div>
+    <!-- Header -->
+    <header class="flex flex-col sm:flex-row items-center justify-between gap-4 mb-8" id="header" style="display: none;">
+      <div class="flex items-center gap-3">
+        <div class="w-12 h-12 rounded-lg bg-teal-100 flex items-center justify-center text-teal-600">
+          <i class="fas fa-pills text-2xl"></i> <!-- لوجو جديد: حبوب دواء -->
+        </div>
+        <div>
+          <h1 class="text-2xl sm:text-3xl font-bold text-slate-800">دوا لينك</h1>
+          <p class="text-sm text-slate-500" id="user-greeting"></p>
+        </div>
+      </div>
+      <div class="w-full sm:w-auto flex items-center gap-4">
+        <div class="relative flex-grow">
+          <input id="search-input" type="search" placeholder="ابحث عن صنف..." class="w-full rounded-lg pl-10 pr-4 py-2.5 shadow-sm bg-white border-slate-200 focus:outline-none focus:ring-2 focus:ring-teal-200">
+          <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
+        </div>
+        <div class="relative">
+          <select id="region-filter" class="rounded-lg px-4 py-2.5 shadow-sm bg-white border-slate-200 focus:outline-none focus:ring-2 focus:ring-teal-200 appearance-none pr-8">
+            <option value="">كل المناطق</option>
+          </select>
+          <i class="fas fa-chevron-down absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
+        </div>
+        <div class="relative">
+          <select id="sort-filter" class="rounded-lg px-4 py-2.5 shadow-sm bg-white border-slate-200 focus:outline-none focus:ring-2 focus:ring-teal-200 appearance-none pr-8">
+            <option value="">ترتيب افتراضي</option>
+            <option value="discount-desc">أعلى خصم</option>
+            <option value="discount-asc">أقل خصم</option>
+            <option value="price-desc">أعلى سعر</option>
+            <option value="price-asc">أقل سعر</option>
+          </select>
+          <i class="fas fa-chevron-down absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
+        </div>
+        <button id="logout-btn" class="bg-red-500 text-white px-4 py-2 rounded">خروج</button>
+      </div>
+    </header>
+    <div id="selected-count" class="selected-count hidden">
+        <i class="fas fa-shopping-cart mr-2"></i> <span id="count-num">0</span> منتج مختار
+    </div>
+    <div id="status-area" class="mb-4"></div>
+    <div id="loading" class="text-center py-12"><div class="spinner mx-auto"></div><p class="mt-3 text-slate-500">جاري تحميل الأصناف...</p></div>
+    <main id="products-grid" class="hidden grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5"></main>
+    <div id="loader-sentinel"></div>
+    <div id="loading-more" class="text-center py-8 hidden"><div class="spinner mx-auto"></div></div>
+    <button id="confirm-order-btn" class="fixed bottom-24 right-4 bg-teal-500 text-white p-4 rounded-full shadow-lg hidden z-40" onclick="openConfirmModal()">
+        <i class="fas fa-check text-xl"></i>
+    </button>
+  </div>
+  <!-- Telegram Button -->
+  <div class="telegram-btn">
+    <a href="https://t.me/DawaLink_web?start=%D9%85%D8%B1%D8%AD%D8%A8%D8%A7%D9%8B%D8%8C%20%D8%A3%D9%88%D8%AF%20%D8%B9%D8%B1%D8%B6%20%D8%B5%D9%86%D9%81%20%D8%AF%D9%88%D8%A7%D8%A6%D9%8A%20%D8%B9%D9%84%D9%89%20%D8%A7%D9%84%D9%85%D9%88%D9%82%D8%B9%20%D8%A3%D9%88%20%D9%84%D8%AF%D9%8A%20%D8%A7%D8%B3%D8%AA%D9%81%D8%B3%D8%A7%D8%B1%20%D8%AD%D9%88%D9%84%20%D8%AF%D9%88%D8%A7%20%D9%84%D9%8A%D9%86%D9%83" target="_blank">
+      <i class="fab fa-telegram"></i>
+      عرض دواء أو استفسارات
+    </a>
+  </div>
+  <!-- Disclaimer Modal -->
+  <div id="disclaimer-modal" class="fixed inset-0 z-40 hidden flex items-center justify-center bg-black bg-opacity-50 p-4">
+    <div class="modal-content bg-white rounded-2xl shadow-xl w-full max-w-2xl max-h-[80vh] overflow-y-auto flex flex-col">
+      <div class="p-5 border-b flex justify-between items-start">
+        <h2 class="text-xl font-bold text-slate-800">شروط الاستخدام</h2>
+        <button id="close-disclaimer-btn" class="text-slate-400 hover:text-slate-600">&times;</button>
+      </div>
+      <div class="p-6 flex-grow overflow-y-auto">
+        <div class="warning">
+          <i class="fas fa-exclamation-triangle"></i>
+          <strong>تحذير هام:</strong> هذا الموقع مخصص فقط للصيدليات المسجلة لدى الهيئة العامة للدواء. أي استخدام غير مصرح به قد يعرضك للمساءلة القانونية.
+        </div>
+        <div class="disclaimer-text">
+          <p>مرحبًا بكم في <strong>دوا لينك</strong>، المنصة التي تهدف إلى تسهيل التواصل بين الصيدليات المصرية بشأن الأدوية الراكدة بكفاءة وأمان. نحن هنا لنساعد في تبادل المعلومات والتنسيق بين الصيدليات، بما يساهم في تقليل الفاقد وتعزيز الاستدامة في سلسلة التوريد الدوائية. من خلال عرض البيانات المقدمة من الصيدليات، نتيح لكم الوصول السريع إلى الأصناف المتاحة، مع الالتزام بأعلى معايير الخصوصية والأمان.</p>
+          <p><strong>إخلاء المسؤولية:</strong> يُرجى العلم أن <strong>دوا لينك</strong> لا تقوم ببيع أو شراء أي أدوية أو منتجات دوائية، ولا تتدخل في أي معاملات مالية أو تحويلات أموال بين الصيدليات. يقتصر دورنا فقط على توفير وسيلة اتصال بين الصيدليات المشاركة، دون أي تدخل في محتوى العروض أو الاتفاقيات. تقع المسؤولية الكاملة عن صحة الأدوية وسلامتها وتاريخ صلاحيتها والامتثال للقوانين واللوائح المصرية على عاتق الصيدليات المشاركة وحدها. المنصة غير مسؤولة عن أي اتفاقيات تجارية أو صفقات أو التزامات مالية أو قانونية تتم بين الأطراف، ويُنصح بشدة بالتحقق من صحة الأدوية قبل أي تعامل.</p>
+          <p><strong>تحذيرات إضافية:</strong></p>
+          <ul class="list-disc list-inside space-y-1 mt-2">
+            <li>جميع الأصناف المعروضة من مسؤولية الصيدليات المشاركة، ويشترط أن تكون مطابقة لمعايير وشروط الهيئة العامة للدواء المصرية، وسارية الصلاحية وخالية من أي تلف.</li>
+            <li>المنصة لا تتحمل أي مسؤولية عن جودة المنتجات أو صحة البيانات والمعلومات المعروضة من قبل الصيدليات المشاركة، وتقع المسؤولية الكاملة على عاتق الصيدلية العارضة.</li>
+            <li>باستخدامك للموقع، فإنك تقر وتوافق على الالتزام الكامل بهذه الشروط والأحكام. تحتفظ المنصة بحق تعديلها أو تحديثها في أي وقت، ويتم الإعلان عن أي تعديلات من خلال هذه الصفحة.</li>
+          </ul>
+          <p class="mt-4 text-center text-sm text-slate-600">للاستفسارات أو الشكاوى، يرجى الاتصال بنا عبر التليجرام. آخر تحديث: 26 سبتمبر 2025.</p>
+        </div>
+      </div>
+      <div class="p-4 bg-slate-50 border-t mt-auto">
+        <button id="accept-disclaimer-btn" class="w-full bg-teal-500 hover:bg-teal-600 text-white font-bold py-3 px-4 rounded-lg transition-colors">
+          أوافق على الشروط
+        </button>
+      </div>
+    </div>
+  </div>
+  <!-- Auth Modal -->
+  <div id="auth-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black bg-opacity-50 p-4">
+    <div class="modal-content bg-white rounded-2xl shadow-xl w-full max-w-lg max-h-[90vh] flex flex-col">
+      <div class="p-5 border-b flex justify-between items-start">
+        <h2 id="modal-title" class="text-xl font-bold text-slate-800">تسجيل جديد</h2>
+        <button id="close-auth-btn" class="text-slate-400 hover:text-slate-600">&times;</button>
+      </div>
+      <div class="p-6 overflow-y-auto">
+        <form id="auth-form" novalidate>
+          <input type="hidden" id="auth-type" value="register">
+          <div id="register-fields" class="grid grid-cols-1 gap-4">
+            <div>
+              <label for="pharmacy-name" class="font-semibold text-slate-700 mb-1 block">اسم الصيدلية</label>
+              <input type="text" id="pharmacy-name" class="w-full p-2 border rounded-md focus:ring-teal-500 focus:border-teal-500">
+            </div>
+            <div>
+              <label for="phone" class="font-semibold text-slate-700 mb-1 block">رقم الهاتف (تليجرام)</label>
+              <input type="tel" id="phone" class="w-full p-2 border rounded-md focus:ring-teal-500 focus:border-teal-500">
+            </div>
+            <div>
+              <label for="password" class="font-semibold text-slate-700 mb-1 block">كلمة السر</label>
+              <input type="password" id="password" class="w-full p-2 border rounded-md focus:ring-teal-500 focus:border-teal-500">
+            </div>
+            <div>
+              <label for="confirm-password" class="font-semibold text-slate-700 mb-1 block">تأكيد كلمة السر</label>
+              <input type="password" id="confirm-password" class="w-full p-2 border rounded-md focus:ring-teal-500 focus:border-teal-500">
+            </div>
+            <div>
+              <label for="address" class="font-semibold text-slate-700 mb-1 block">عنوان الصيدلية</label>
+              <textarea id="address" rows="2" class="w-full p-2 border rounded-md focus:ring-teal-500 focus:border-teal-500"></textarea>
+            </div>
+          </div>
+          <div id="login-fields" class="grid grid-cols-1 gap-4 hidden">
+            <div>
+              <label for="phone-login" class="font-semibold text-slate-700 mb-1 block">رقم الهاتف</label>
+              <input type="tel" id="phone-login" class="w-full p-2 border rounded-md focus:ring-teal-500 focus:border-teal-500">
+            </div>
+            <div>
+              <label for="password-login" class="font-semibold text-slate-700 mb-1 block">كلمة السر</label>
+              <input type="password" id="password-login" class="w-full p-2 border rounded-md focus:ring-teal-500 focus:border-teal-500">
+            </div>
+          </div>
+        </form>
+      </div>
+      <div class="p-4 bg-slate-50 border-t mt-auto">
+        <button id="submit-auth-btn" class="w-full bg-teal-500 hover:bg-teal-600 text-white font-bold py-3 px-4 rounded-lg transition-colors">
+          تسجيل
+        </button>
+        <div id="auth-status" class="text-center mt-2"></div>
+        <p class="text-center text-sm text-slate-500 mt-2">
+          <a href="#" id="switch-auth" class="text-teal-500 hover:underline">لديك حساب؟ قم بالدخول</a>
+        </p>
+      </div>
+    </div>
+  </div>
+  <!-- Confirm Order Modal -->
+  <div id="confirm-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black bg-opacity-50 p-4">
+    <div class="modal-content bg-white rounded-2xl shadow-xl w-full max-w-lg max-h-[90vh] flex flex-col">
+      <div class="p-5 border-b flex justify-between items-start">
+        <h2 class="text-xl font-bold text-slate-800">تأكيد الطلب</h2>
+        <button id="close-confirm-btn" class="text-slate-400 hover:text-slate-600">&times;</button>
+      </div>
+      <div class="p-6 overflow-y-auto">
+        <div id="confirm-order-details"></div>
+        <div id="confirm-user-details" class="mt-4 p-4 bg-slate-50 rounded"></div>
+      </div>
+      <div class="p-4 bg-slate-50 border-t mt-auto">
+        <button id="submit-confirm-btn" class="w-full bg-teal-500 hover:bg-teal-600 text-white font-bold py-3 px-4 rounded-lg transition-colors">
+          إرسال الطلب
+        </button>
+        <div id="confirm-status" class="text-center mt-2"></div>
+      </div>
+    </div>
+  </div>
+  <!-- Success Overlay -->
+  <div id="success-overlay" class="fixed inset-0 z-50 hidden items-center justify-center bg-black bg-opacity-60">
+      <div class="text-center text-white animate-pulse">
+          <i class="fas fa-check-circle text-8xl text-green-400 mb-4"></i>
+          <h2 class="text-3xl font-bold">تم تأكيد الطلب</h2>
+          <p class="text-lg mt-2">سيتم التواصل معك قريباً</p>
+      </div>
+  </div>
 </body>
 </html>
